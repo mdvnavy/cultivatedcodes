@@ -29,4 +29,5 @@ jobs:
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-refresh dashboard data" && git push)
 git add .
 git commit -m "Set up content dashboard with initial data"
-git push
+git pushnpm install -g http-server
+http-server -p 8000

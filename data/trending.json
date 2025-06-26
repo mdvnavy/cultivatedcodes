@@ -1,6 +1,14 @@
 {
-  "labels": ["Week 1", "Week 2"],
+  "labels": [
+    "Fallback 1",
+    "Fallback 2",
+    "Fallback 3"
+  ],
   "series": {
-    "example": [10, 20]
+    "search interest": [
+      100,
+      200,
+      150
+    ]
   }
 }
