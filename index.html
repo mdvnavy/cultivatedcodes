@@ -21,6 +21,10 @@
 <body class="p-4 bg-light">
   <div class="container">
     <h2 class="mb-4">Content Opportunity Dashboard</h2>
+    <div class="mb-3">
+      <label class="form-check-label me-2" for="dataToggle">Use Live GitHub Data</label>
+      <input type="checkbox" id="dataToggle" checked>
+    </div>
     <div class="row g-4">
       <!-- Trending -->
       <div class="col-6">
@@ -110,8 +114,14 @@
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
   </script>
   <script>
+    let trendingChartInstance = null;
+    let gemsChartInstance = null;
     async function loadAll() {
-      const base = 'https://raw.githubusercontent.com/mdvnavy/cultivatedcodes/main/data/';
+      const toggle = document.getElementById('dataToggle');
+      let useLive = toggle ? toggle.checked : true;
+      let base = useLive
+        ? 'https://raw.githubusercontent.com/mdvnavy/cultivatedcodes/main/data/'
+        : 'data/';
       function fetchWithDebug(name) {
         const url = base + name + '.json';
         return fetch(url)
@@ -120,14 +130,15 @@
             return r.json();
           });
       }
-      try {
-        const [trending, gems, paa] = await Promise.all([
-          fetchWithDebug('trending'),
-          fetchWithDebug('gems'),
-          fetchWithDebug('paa')
-        ]);
-        // Trending chart
-        new Chart(
+      function renderCharts(trending, gems) {
+        // Destroy previous chart instances if they exist
+        if (trendingChartInstance) {
+          trendingChartInstance.destroy();
+        }
+        if (gemsChartInstance) {
+          gemsChartInstance.destroy();
+        }
+        trendingChartInstance = new Chart(
           document.getElementById("trendingChart"),
           {
             type:'line',
@@ -140,8 +151,7 @@
             options:{responsive:true}
           }
         );
-        // Gems chart
-        new Chart(
+        gemsChartInstance = new Chart(
           document.getElementById("gemsChart"),
           {
             type:'bubble',
@@ -153,6 +163,14 @@
             options:{responsive:true}
           }
         );
+      }
+      try {
+        const [trending, gems, paa] = await Promise.all([
+          fetchWithDebug('trending'),
+          fetchWithDebug('gems'),
+          fetchWithDebug('paa')
+        ]);
+        renderCharts(trending, gems);
         // PAA list
         const paaList = document.getElementById('paaList');
         paaList.innerHTML = '';
@@ -168,10 +186,46 @@
           const li = document.createElement('li'); li.textContent = t; ideaList.append(li);
         });
       } catch (err) {
+        // If using live and it fails, try local as fallback
+        if (useLive) {
+          try {
+            base = 'data/';
+            const [trending, gems, paa] = await Promise.all([
+              fetchWithDebug('trending'),
+              fetchWithDebug('gems'),
+              fetchWithDebug('paa')
+            ]);
+            renderCharts(trending, gems);
+            // PAA list
+            const paaList = document.getElementById('paaList');
+            paaList.innerHTML = '';
+            paa.forEach(q=>{
+              const li = document.createElement('li');
+              li.textContent = q.question;
+              paaList.append(li);
+            });
+            // Ideas list (static)
+            const ideaList = document.getElementById('ideaList');
+            ideaList.innerHTML = '';
+            ['5 AI Tools...','I Tested 7 AI Writing Tools—Here’s the Best','How to Create...'].forEach(t=>{
+              const li = document.createElement('li'); li.textContent = t; ideaList.append(li);
+            });
+            return;
+          } catch (err2) {
+            alert('Failed to load dashboard data from both GitHub and local: ' + err2.message);
+            return;
+          }
+        }
         alert('Failed to load dashboard data: ' + err.message);
       }
     }
-    document.addEventListener('DOMContentLoaded', loadAll);
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('dataToggle');
+      if (toggle) {
+        toggle.addEventListener('change', loadAll);
+      }
+      loadAll();
+    });
   </script>
 </body>
 </html>
