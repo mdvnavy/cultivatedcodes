@@ -5,13 +5,23 @@ on:
     - cron: '0 0 * * *'  # Run daily at midnight UTC
   workflow_dispatch:  # Allow manual triggering
 
+# Prevent race conditions by cancelling previous runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Required to push changes back to the repository
     steps:
-      - uses: actions/checkout@v3
+      # Check out the specific branch you want to commit to
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          # Replace 'main' with your repository's default branch if different
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -19,14 +29,22 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
+        # Use 'npm ci' for faster, more reliable installs in CI
         run: npm ci
 
       - name: Run fetch script
         run: node fetch.js
 
-      - name: Commit and push if changed
+      - name: Commit and push if changes are present
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add data/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-refresh dashboard data" && git push)
+          # Use a clear 'if' statement to check for changes before committing
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-refresh dashboard data"
+            # Explicitly push to the branch checked out above
+            git push origin main
+          else
+            echo "No changes to commit."
+          fi
