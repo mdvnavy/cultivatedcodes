@@ -1,0 +1,6 @@
+{
+  "labels": ["Week 1", "Week 2"],
+  "series": {
+    "example": [10, 20]
+  }
+}
