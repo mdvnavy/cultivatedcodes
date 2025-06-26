@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Content Opportunity Dashboard</title>
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .card-tile { cursor:pointer; transition:.1s;}
+    .card-tile:hover { transform:translateY(-4px); box-shadow:0 4px 8px rgba(0,0,0,0.1) }
+    .collapse-content { margin:.5rem 0; padding:.5rem; border:1px solid #e5e5e5; background:#fafafa; border-radius:4px; }
+    canvas { width:100%!important; height:300px!important; }
+  </style>
+</head>
+<body class="p-4 bg-light">
+  <div class="container">
+    <h2 class="mb-4">Content Opportunity Dashboard</h2>
+    <div class="row g-4">
+      <!-- Trending -->
+      <div class="col-6">
+        <div class="card card-tile h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Trending Topics</h5>
+            <p class="display-4">5 ↑</p>
+            <div class="collapse show" id="collapseTrending">
+              <div class="collapse-content">
+                <h6>Interest Over Time</h6>
+                <canvas id="trendingChart"></canvas>
+              </div>
+            </div>
+            <button class="btn btn-dark mt-auto"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseTrending">
+              Explore
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- PAA -->
+      <div class="col-6">
+        <div class="card card-tile h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Audience Questions</h5>
+            <p class="display-4">5</p>
+            <div class="collapse show" id="collapsePAA">
+              <div class="collapse-content">
+                <h6>Top “People Also Ask”</h6>
+                <ol id="paaList" class="mb-0 ps-3"></ol>
+              </div>
+            </div>
+            <button class="btn btn-dark mt-auto"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapsePAA">
+              Explore
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Gems -->
+      <div class="col-6">
+        <div class="card card-tile h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Hidden Gems</h5>
+            <p class="display-4">4</p>
+            <div class="collapse show" id="collapseGems">
+              <div class="collapse-content">
+                <h6>Volume vs. Competition</h6>
+                <canvas id="gemsChart"></canvas>
+              </div>
+            </div>
+            <button class="btn btn-dark mt-auto"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseGems">
+              Explore
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Ideas -->
+      <div class="col-6">
+        <div class="card card-tile h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Video Idea Generator</h5>
+            <p>Keyword: <strong>AI tools</strong></p>
+            <div class="collapse show" id="collapseIdeas">
+              <div class="collapse-content">
+                <h6>Sample Titles</h6>
+                <ul id="ideaList" class="mb-0 ps-3"></ul>
+              </div>
+            </div>
+            <button class="btn btn-dark mt-auto"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseIdeas">
+              Explore
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+  </script>
+  <script>
+    async function loadAll() {
+      const base = 'https://raw.githubusercontent.com/mdvnavy/cultivatedcodes/main/data/';
+      function fetchWithDebug(name) {
+        const url = base + name + '.json';
+        return fetch(url)
+          .then(r => {
+            if (!r.ok) throw new Error(`${name}.json not found`);
+            return r.json();
+          });
+      }
+      try {
+        const [trending, gems, paa] = await Promise.all([
+          fetchWithDebug('trending'),
+          fetchWithDebug('gems'),
+          fetchWithDebug('paa')
+        ]);
+        // Trending chart
+        new Chart(
+          document.getElementById("trendingChart"),
+          {
+            type:'line',
+            data:{
+              labels: trending.labels,
+              datasets: Object.entries(trending.series).map(([lbl,data])=>(
+                {label:lbl, data, fill:false, tension:0.3}
+              ))
+            },
+            options:{responsive:true}
+          }
+        );
+        // Gems chart
+        new Chart(
+          document.getElementById("gemsChart"),
+          {
+            type:'bubble',
+            data:{
+              datasets: gems.map(r=>(
+                {label:r.kw, data:[{x:r.smv,y:r.vids,r:Math.sqrt(r.av)/20}], backgroundColor:'rgba(54,162,235,0.6)'}
+              ))
+            },
+            options:{responsive:true}
+          }
+        );
+        // PAA list
+        const paaList = document.getElementById('paaList');
+        paaList.innerHTML = '';
+        paa.forEach(q=>{
+          const li = document.createElement('li');
+          li.textContent = q.question;
+          paaList.append(li);
+        });
+        // Ideas list (static)
+        const ideaList = document.getElementById('ideaList');
+        ideaList.innerHTML = '';
+        ['5 AI Tools...','I Tested 7 AI Writing Tools—Here’s the Best','How to Create...'].forEach(t=>{
+          const li = document.createElement('li'); li.textContent = t; ideaList.append(li);
+        });
+      } catch (err) {
+        alert('Failed to load dashboard data: ' + err.message);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadAll);
+  </script>
+</body>
+</html>
